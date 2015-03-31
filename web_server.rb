@@ -20,7 +20,18 @@ end
 def requested_file(request_line)
   request_uri = request_line.split(" ")[1]
   path = URI.unescape(URI(request_uri).path)
-  File.join(WEB_ROOT, path)
+
+  clean = []
+  parts = path.split('/')
+
+  parts.each do |part|
+    # Skip empty or current dir('.')
+    next if part.empty? || part == '.'
+
+    part == '..' ? clean.pop : clean << part
+  end
+
+  File.join(WEB_ROOT, *clean)
 end
 
 server = TCPServer.new('localhost', 2345)
