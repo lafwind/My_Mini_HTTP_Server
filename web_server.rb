@@ -46,50 +46,53 @@ server = TCPServer.new(ARGV[0], ARGV[1])
 # Waitting
 loop do
 
-  # Return a TCPSocket
-  socket = server.accept
+  Thread.start(server.accept) do |socket|
 
-  # Read the first line of the request
-  request_line = socket.gets
+    # Return a TCPSocket
+    #socket = server.accept
+
+    # Read the first line of the request
+    request_line = socket.gets
 
 
-  # Log the request to the console for debugging
-  STDERR.puts request_line
+    # Log the request to the console for debugging
+    STDERR.puts request_line
 
-  path = requested_file(request_line)
+    path = requested_file(request_line)
 
-  # set index.html as default file of dir
-  path = File.join(path, 'index.html') if File.directory?(path)
+    # set index.html as default file of dir
+    path = File.join(path, 'index.html') if File.directory?(path)
 
-  if File.exist?(path) && !File.directory?(path)
-    File.open(path, "rb") do |file|
-      socket.print "HTTP/1.1 200 OK\r\n" +
-        "Content-Type: #{content_type(file)}\r\n" +
-        "Content-Length: #{file.size}\r\n" +
+    if File.exist?(path) && !File.directory?(path)
+      File.open(path, "rb") do |file|
+        socket.print "HTTP/1.1 200 OK\r\n" +
+          "Content-Type: #{content_type(file)}\r\n" +
+          "Content-Length: #{file.size}\r\n" +
+          "Connection: close\r\n"
+
+          unless is_head?(request_line)
+            # Blank line
+            socket.print "\r\n"
+
+            # Write the content of the file to the socket
+            IO.copy_stream(file, socket)
+          end
+      end
+    else
+      message = "File not found\n"
+      socket.print "HTTP/1.1 404 Not Found\r\n" +
+        "Content-Type: text/plain\r\n" +
+        "Content-Length: #{message.size}\r\n" +
         "Connection: close\r\n"
 
         unless is_head?(request_line)
-          # Blank line
           socket.print "\r\n"
-
-          # Write the content of the file to the socket
-          IO.copy_stream(file, socket)
+          # Response body
+          socket.print message
         end
     end
-  else
-    message = "File not found\n"
-    socket.print "HTTP/1.1 404 Not Found\r\n" +
-      "Content-Type: text/plain\r\n" +
-      "Content-Length: #{message.size}\r\n" +
-      "Connection: close\r\n"
 
-      unless is_head?(request_line)
-        socket.print "\r\n"
-        # Response body
-        socket.print message
-      end
+    # Close the socket
+    socket.close
   end
-
-  # Close the socket
-  socket.close
 end
