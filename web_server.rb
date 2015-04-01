@@ -39,7 +39,9 @@ def is_head?(request_line)
   false
 end
 
-server = TCPServer.new('localhost', 2345)
+# server = TCPServer.new('localhost', 2345)
+
+server = TCPServer.new(ARGV[0], ARGV[1])
 
 # Waitting
 loop do
@@ -66,7 +68,7 @@ loop do
         "Content-Length: #{file.size}\r\n" +
         "Connection: close\r\n"
 
-        if is_head?(request_line)
+        unless is_head?(request_line)
           # Blank line
           socket.print "\r\n"
 
@@ -81,7 +83,7 @@ loop do
       "Content-Length: #{message.size}\r\n" +
       "Connection: close\r\n"
 
-      if is_head?(request_line)
+      unless is_head?(request_line)
         socket.print "\r\n"
         # Response body
         socket.print message
