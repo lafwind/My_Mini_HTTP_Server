@@ -34,6 +34,11 @@ def requested_file(request_line)
   File.join(WEB_ROOT, *clean)
 end
 
+def is_head?(request_line)
+  return true if request_line.split(" ")[0] == "HEAD"
+  false
+end
+
 server = TCPServer.new('localhost', 2345)
 
 # Waitting
@@ -44,6 +49,7 @@ loop do
 
   # Read the first line of the request
   request_line = socket.gets
+
 
   # Log the request to the console for debugging
   STDERR.puts request_line
@@ -60,11 +66,13 @@ loop do
         "Content-Length: #{file.size}\r\n" +
         "Connection: close\r\n"
 
-        # Blank line
-        socket.print "\r\n"
+        if is_head?(request_line)
+          # Blank line
+          socket.print "\r\n"
 
-        # Write the content of the file to the socket
-        IO.copy_stream(file, socket)
+          # Write the content of the file to the socket
+          IO.copy_stream(file, socket)
+        end
     end
   else
     message = "File not found\n"
@@ -73,9 +81,11 @@ loop do
       "Content-Length: #{message.size}\r\n" +
       "Connection: close\r\n"
 
-      socket.print "\r\n"
-      # Response body
-      socket.print message
+      if is_head?(request_line)
+        socket.print "\r\n"
+        # Response body
+        socket.print message
+      end
   end
 
   # Close the socket
